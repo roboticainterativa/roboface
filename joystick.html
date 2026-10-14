@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>RoboFace — Joystick</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{font-family:Arial,Helvetica,sans-serif;background:#070d13;color:#fff;touch-action:none;user-select:none}
+.app{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+.top{height:58px;flex:0 0 58px;width:100%;display:flex;align-items:center;justify-content:center;gap:14px;background:#0b1722;border-bottom:1px solid #294354}
+.topTitle{font-size:clamp(17px,2vw,28px);font-weight:900;letter-spacing:1px}
+.topStatus{font-size:clamp(10px,1vw,14px);padding:9px 13px;border:1px solid #d9a72e;border-radius:8px;background:#0d1822}
+.workspace{position:relative;flex:1;min-height:0;width:min(1250px,100vw);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 12px;gap:7px}
+.connection{position:absolute;z-index:10;top:74px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:12px;width:min(820px,94vw);height:58px}
+.uiBtn{border:1px solid #456070;border-radius:10px;background:#162734;color:#fff;font-weight:900;cursor:pointer}
+.connBtn{height:54px;padding:0 30px;background:#075fe9;border-color:#1684ff;font-size:clamp(15px,1.45vw,20px)}
+.simBtn{height:54px;padding:0 26px;font-size:clamp(14px,1.35vw,19px)}
+.simBtn.on{background:#8a671e;border-color:#d0a033}
+.controllerWrap{position:relative;width:min(900px,88vw);aspect-ratio:1.9/1;flex:0 1 auto;display:flex;align-items:center;justify-content:center;margin-top:18px}
+.shell{position:absolute;inset:0;background:linear-gradient(145deg,#303840 0%,#20272d 42%,#11171c 100%);border:3px solid #05090c;border-radius:25% 25% 22% 22% / 32% 32% 25% 25%;box-shadow:inset 0 2px 0 #ffffff18,inset 0 -12px 25px #0009,0 15px 28px #000b}
+.shell:before{content:"";position:absolute;inset:4%;border:1px solid #59646c55;border-radius:23% 23% 20% 20% / 30% 30% 23% 23%;pointer-events:none}
+.inner{position:absolute;inset:0}
+
+/* Joystick */
+.joyArea{position:absolute;left:10%;top:50%;width:30%;aspect-ratio:1;transform:translateY(-50%);display:flex;align-items:center;justify-content:center}
+.joyBase{width:82%;height:82%;border-radius:50%;background:#11181e;border:4px solid #4b5962;box-shadow:inset 0 0 28px #000b,0 7px 12px #000a;position:relative;touch-action:none}
+.joyBase:after{content:"";position:absolute;inset:15%;border:2px dashed #35434d;border-radius:50%}
+.joyStick{position:absolute;z-index:3;width:36%;aspect-ratio:1;border-radius:50%;left:32%;top:32%;background:linear-gradient(#71808a,#2a343b);border:4px solid #0b1014;box-shadow:0 8px 0 #070a0d, inset 0 3px 0 #ffffff33;touch-action:none}
+.joyStick:after{content:"";position:absolute;inset:32%;border-radius:50%;background:#9caab2}
+.axis{position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);font:700 clamp(12px,1.3vw,17px) monospace;color:#b8c6cf;white-space:nowrap}
+.command{position:absolute;left:50%;top:-32px;transform:translateX(-50%);font-size:clamp(12px,1.25vw,17px);font-weight:900;color:#28a9ff;white-space:nowrap}
+
+/* A/B/X/Y */
+.face{position:absolute;right:10%;top:50%;width:25%;height:55%;transform:translateY(-50%)}
+.face button{position:absolute;width:34%;aspect-ratio:1;border-radius:50%;font-size:clamp(19px,2.8vw,36px);font-weight:900;text-shadow:0 2px 2px #0008;box-shadow:inset 0 4px 0 #ffffff55,0 6px 11px #000b}
+.y{left:33%;top:0;background:#ffd21c;border:2px solid #b99000;color:#171717}
+.x{left:0;top:33%;background:#168cff;border:2px solid #0755a5}
+.b{right:0;top:33%;background:#ff3944;border:2px solid #a90d18}
+.a{left:33%;bottom:0;background:#18c94f;border:2px solid #087b2b}
+.centerBtns{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);display:flex;gap:14px}
+.centerBtns button{position:relative;width:clamp(105px,11vw,145px);height:clamp(36px,4.4vh,48px);border-radius:24px;background:#10181f;font-size:clamp(13px,1.35vw,18px)}
+
+/* parâmetros */
+.bottom{width:min(1180px,96vw);display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center}
+.param{background:#0e1c27;border:1px solid #315067;border-radius:10px;padding:11px 13px}
+.paramHead{display:flex;justify-content:space-between;gap:8px;font-size:clamp(14px,1.35vw,19px);font-weight:900}
+.val{color:#28a9ff;font-family:monospace;font-size:clamp(14px,1.4vw,19px)}
+input[type=range]{width:100%;accent-color:#1da5f5;height:30px}
+.stopRow{display:flex;justify-content:center;grid-column:1/-1;margin-top:1px}
+.stop{height:46px;min-width:190px;padding:0 30px;background:#ed2632;border:1px solid #ff5862;border-radius:10px;font-size:clamp(15px,1.35vw,19px);font-weight:900;color:white;cursor:pointer}
+.last{position:fixed;left:9px;bottom:5px;font:11px monospace;color:#718794}
+@media(max-height:650px){
+ .top{height:44px;flex-basis:44px}.workspace{gap:4px}.connection{top:56px}.connBtn,.simBtn{height:44px}
+ .bottom{gap:5px}.param{padding:7px 9px}.paramHead{font-size:13px}.val{font-size:14px}.stop{height:36px}
+}
+@media(max-width:700px){
+ .controllerWrap{width:96vw}.bottom{grid-template-columns:repeat(2,1fr)}.stopRow{grid-column:1/-1}.topTitle{font-size:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+ <div class="topTitle">🤖 ROBOFACE • JOYSTICK</div>
+ <div class="topStatus" id="status">⚠ Conecte o micro:bit ou ative a simulação</div>
+</header>
+
+<main class="workspace">
+ <div class="connection">
+  <button class="uiBtn connBtn" id="connect">🔵 Bluetooth</button>
+  <button class="uiBtn simBtn" id="sim">🧪 Simulação: OFF</button>
+ </div>
+
+ <section class="controllerWrap">
+  <div class="shell"></div>
+  <div class="inner">
+   <div class="joyArea">
+    <div class="joyBase" id="joy">
+     <div class="joyStick" id="stick"></div>
+    </div>
+    <div class="command" id="command">JOY:X:0:Y:0;</div>
+    <div class="axis">X: <b id="xVal">0</b> &nbsp; Y: <b id="yVal">0</b></div>
+   </div>
+
+   <div class="face">
+    <button class="hit y" data-key="Y">Y</button>
+    <button class="hit x" data-key="X">X</button>
+    <button class="hit b" data-key="B">B</button>
+    <button class="hit a" data-key="A">A</button>
+   </div>
+
+   <div class="centerBtns">
+    <button class="hit" id="select">SELECT</button>
+    <button class="hit" id="start">START</button>
+   </div>
+  </div>
+ </section>
+
+ <section class="bottom">
+  <div class="param"><div class="paramHead"><span>⚙ Velocidade máxima</span><span class="val" id="maxVal">80</span></div><input id="max" type="range" min="0" max="100" value="80"></div>
+  <div class="param"><div class="paramHead"><span>🚀 Aceleração</span><span class="val" id="accVal">25</span></div><input id="acc" type="range" min="0" max="100" value="25"></div>
+  <div class="param"><div class="paramHead"><span>⚙ Servo direção</span><span class="val" id="dirVal">90°</span></div><input id="dir" type="range" min="0" max="180" value="90"></div>
+  <div class="param"><div class="paramHead"><span>↔ Direção</span><span class="val" id="steerVal">0</span></div><input id="steer" type="range" min="-100" max="100" value="0"></div>
+  <div class="stopRow"><button class="stop" id="stop">⛔ STOP</button></div>
+ </section>
+</main>
+<div class="last" id="last">—</div>
+</div>
+
+<script>
+const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const TX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+let rxChar=null,device=null,simulation=false,dragging=false,lastJoy='',joyTimer=null;
+
+const status=document.getElementById('status'),last=document.getElementById('last');
+function setStatus(t,ok=false,err=false){
+ status.textContent=t;status.style.borderColor=err?'#e63d4b':ok?'#20c997':'#d9a72e';
+}
+async function send(msg){
+  if(!msg)return;
+
+  last.textContent=msg;
+
+  if(simulation){
+    setStatus('🧪 Simulação ativa',true);
+    return;
+  }
+
+  if(!rxChar){
+    setStatus('⚠ Conecte o micro:bit ou ative a simulação',false,true);
+    return;
+  }
+
+  try{
+    // Mesmo envio validado no Gamepad:
+    // RX = 003 + texto + \n
+    const texto = msg.replace(/;$/, '') + '\n';
+    const dados = new TextEncoder().encode(texto);
+    await rxChar.writeValue(dados);
+    setStatus('🟢 Comando enviado: '+msg.replace(/;$/,''),true);
+  }catch(e){
+    console.error('Erro Bluetooth:',e);
+    setStatus('🔴 Erro ao enviar: '+e.message,false,true);
+  }
+}
+
+document.getElementById('sim').onclick=()=>{
+ simulation=!simulation;
+ const b=document.getElementById('sim');
+ b.textContent='🧪 Simulação: '+(simulation?'ON':'OFF');
+ b.classList.toggle('on',simulation);
+ setStatus(simulation?'🧪 Simulação ativa':'⚪ Simulação desativada',simulation)
+};
+
+document.getElementById('connect').onclick=async()=>{
+  if(!navigator.bluetooth){setStatus('❌ Web Bluetooth indisponível',false,true);return}
+  try{
+    setStatus('🔵 Escolha o micro:bit...');
+    device=await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'BBC micro:bit'}],
+      optionalServices:[
+        '00001800-0000-1000-8000-00805f9b34fb',
+        '00001801-0000-1000-8000-00805f9b34fb',
+        '0000180a-0000-1000-8000-00805f9b34fb',
+        SERVICE
+      ]
+    });
+    device.addEventListener('gattserverdisconnected',()=>{
+      rxChar=null;resetJoystick();setStatus('⚪ Desconectado')
+    });
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(SERVICE);
+    const txChar=await service.getCharacteristic(TX);
+    await txChar.startNotifications();
+    rxChar=await service.getCharacteristic(RX);
+    setStatus('🟢 Micro:bit conectado e pronto para receber',true);
+  }catch(e){
+    rxChar=null;
+    setStatus('❌ Conexão cancelada: '+e.message,false,true)
+  }
+};
+
+const joy=document.getElementById('joy'),stick=document.getElementById('stick');
+function updateJoystick(clientX,clientY){
+ const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+ let dx=clientX-cx,dy=clientY-cy;
+ const max=(r.width-stick.offsetWidth)/2;
+ const dist=Math.hypot(dx,dy);
+ if(dist>max){dx=dx/dist*max;dy=dy/dist*max}
+ const x=Math.round(dx/max*100);
+ const y=Math.round(-dy/max*100);
+ stick.style.left=(r.width/2-stick.offsetWidth/2+dx)+'px';
+ stick.style.top=(r.height/2-stick.offsetHeight/2+dy)+'px';
+ document.getElementById('xVal').textContent=x;
+ document.getElementById('yVal').textContent=y;
+ const msg='JOY:X:'+x+':Y:'+y+';';
+ document.getElementById('command').textContent=msg;
+ if(msg!==lastJoy){
+    lastJoy=msg;
+    send(msg);
+  }
+}
+function resetJoystick(){
+ dragging=false;clearInterval(joyTimer);joyTimer=null;
+ stick.style.left='32%';stick.style.top='32%';
+ document.getElementById('xVal').textContent='0';
+ document.getElementById('yVal').textContent='0';
+ document.getElementById('command').textContent='JOY:X:0:Y:0;';
+ lastJoy='';
+ send('JOY:X:0:Y:0;');
+}
+joy.addEventListener('pointerdown',e=>{
+ e.preventDefault();dragging=true;joy.setPointerCapture?.(e.pointerId);
+ updateJoystick(e.clientX,e.clientY);
+ clearInterval(joyTimer);
+ joyTimer=setInterval(()=>{if(dragging)send('JOY:X:'+document.getElementById('xVal').textContent+':Y:'+document.getElementById('yVal').textContent+';')},150);
+});
+joy.addEventListener('pointermove',e=>{if(dragging)updateJoystick(e.clientX,e.clientY)});
+joy.addEventListener('pointerup',resetJoystick);
+joy.addEventListener('pointercancel',resetJoystick);
+joy.addEventListener('lostpointercapture',()=>{if(dragging)resetJoystick()});
+
+const cmds={A:'A',B:'B',X:'X',Y:'Y'};
+document.querySelectorAll('[data-key]').forEach(b=>b.addEventListener('pointerdown',e=>{
+ e.preventDefault();send(cmds[b.dataset.key]+';')
+}));
+document.getElementById('start').onclick=()=>send('START;');
+document.getElementById('select').onclick=()=>send('SELECT;');
+document.getElementById('stop').onclick=()=>{resetJoystick();send('STOP;')};
+
+function range(id,valId,prefix,suffix=''){
+ const e=document.getElementById(id),v=document.getElementById(valId);
+ e.addEventListener('input',()=>{v.textContent=e.value+suffix;send(prefix+e.value+';')});
+}
+range('max','maxVal','MAX');
+range('acc','accVal','ACC');
+range('dir','dirVal','DIR','°');
+range('steer','steerVal','STEER');
+
+window.addEventListener('keydown',e=>{
+ const map={ArrowUp:[0,100],ArrowDown:[0,-100],ArrowLeft:[-100,0],ArrowRight:[100,0]};
+ if(!map[e.key])return;e.preventDefault();
+ const [x,y]=map[e.key];
+ document.getElementById('xVal').textContent=x;document.getElementById('yVal').textContent=y;
+ const msg='JOY:X:'+x+':Y:'+y+';';
+ document.getElementById('command').textContent=msg;send(msg);
+});
+window.addEventListener('keyup',e=>{
+ if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return;
+ e.preventDefault();document.getElementById('xVal').textContent=0;document.getElementById('yVal').textContent=0;
+ document.getElementById('command').textContent='JOY:X:0:Y:0;';send('JOY:X:0:Y:0;');
+});
+window.addEventListener('blur',resetJoystick);
+</script>
+</body>
+</html>

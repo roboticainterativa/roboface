@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboFace — Teclado para micro:bit</title>
+<style>
+:root{--bg:#0d1424;--card:#172238;--card2:#22314b;--txt:#f5f7fb;--muted:#aebbd0;--ok:#55d6be;--red:#ff667c}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(135deg,#0b1020,#182740);color:var(--txt);font-family:Arial,Helvetica,sans-serif}
+header{text-align:center;padding:28px 16px 16px}
+h1{margin:0 0 7px;font-size:30px} header p{margin:0;color:var(--muted)}
+main{max-width:1000px;margin:auto;padding:0 16px 35px}
+.card{background:rgba(23,34,56,.97);border:1px solid #30415f;border-radius:18px;padding:20px;margin-bottom:16px}
+button{border:0;border-radius:10px;padding:12px 17px;background:#354761;color:#fff;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(1.12)}
+.primary{background:var(--ok);color:#06151a}.danger{background:var(--red);color:#26050a}
+.status{margin-top:12px;background:#0a1220;border-radius:11px;padding:13px;color:var(--muted)}
+.ok{color:var(--ok)}
+.toggle{display:flex;align-items:center;gap:8px;margin-top:13px;color:var(--muted)}.toggle input{width:auto}
+.event{margin-top:18px;background:#0a1220;border-radius:14px;padding:20px;text-align:center}
+.key{font-size:42px;font-weight:900}.msg{font-family:monospace;font-size:24px;margin-top:8px}.help{color:var(--muted);font-size:13px;line-height:1.5}
+.keyboard{margin-top:20px;overflow-x:auto;padding-bottom:5px}
+.krow{display:flex;gap:5px;justify-content:center;margin:5px 0;min-width:760px}
+.k{height:48px;min-width:45px;padding:5px 8px;font-family:monospace;font-size:12px;background:#293952}
+.k.wide{min-width:78px}.k.xwide{min-width:105px}.k.space{min-width:300px}
+.k.active{background:var(--ok);color:#07151a;transform:translateY(2px)}
+.log{max-height:220px;overflow:auto;background:#090f1b;border-radius:10px;padding:10px;font-family:monospace;font-size:13px}
+.log div{padding:4px;border-bottom:1px solid #1d2a3e}
+</style>
+</head>
+<body>
+<header>
+<h1>⌨️ RoboFace — Teclado</h1>
+<p>Cada tecla envia o próprio comando ao micro:bit</p>
+</header>
+
+<main>
+<section class="card">
+<h2>📡 Conexão com o micro:bit</h2>
+<button id="connect" class="primary">🔵 Conectar micro:bit</button>
+<button id="disconnect" class="danger">Desconectar</button>
+<div id="status" class="status">Desconectado</div>
+
+<label class="toggle">
+<input type="checkbox" id="simulation" checked>
+Modo simulação (não envia Bluetooth)
+</label>
+<p class="help">
+Com a simulação ligada, você pode testar o teclado mesmo sem o micro:bit.
+Quando desligada, cada tecla pressionada será enviada pela conexão Bluetooth UART.
+</p>
+</section>
+
+<section class="card">
+<h2>⌨️ Teste do teclado</h2>
+<div class="event">
+<div class="key" id="lastKey">—</div>
+<div class="msg" id="lastMessage">Aguardando uma tecla...</div>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+</section>
+
+<section class="card">
+<h2>📋 Histórico</h2>
+<div class="log" id="log"><div>Aguardando comandos...</div></div>
+</section>
+</main>
+
+<script>
+/* =========================================================
+   BLUETOOTH — MESMO PADRÃO DO GAMEPAD QUE ESTÁ FUNCIONANDO
+   ========================================================= */
+const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const TX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+let rxChar=null;
+let device=null;
+let simulation=false;
+
+const status=document.getElementById('status');
+
+function setStatus(t){
+  status.textContent=t;
+}
+
+function addLog(text){
+  const log=document.getElementById("log");
+  if(log.children.length===1 &&
+     log.children[0].textContent==="Aguardando comandos...")
+    log.innerHTML="";
+
+  const d=document.createElement("div");
+  d.textContent=new Date().toLocaleTimeString()+"  "+text;
+  log.prepend(d);
+
+  while(log.children.length>30)log.lastChild.remove();
+}
+
+/* =========================================================
+   ENVIO — EXATAMENTE COMO NO GAMEPAD FUNCIONAL
+   ========================================================= */
+async function send(msg){
+  if(!msg)return;
+
+  document.getElementById("lastMessage").textContent="Mensagem: "+msg+";";
+  addLog("ENVIADO → "+msg+";");
+
+  if(simulation){
+    setStatus("🧪 Simulação ativa");
+    return;
+  }
+
+  if(!rxChar){
+    setStatus("⚠ Conecte o micro:bit ou ative a simulação");
+    return;
+  }
+
+  try{
+    await rxChar.writeValue(
+      new TextEncoder().encode(
+        msg.replace(/;$/, '') + '\n'
+      )
+    );
+
+    setStatus("🟢 Comando enviado: "+msg);
+  }catch(e){
+    setStatus("🔴 Erro ao enviar: "+e.message);
+    console.error(e);
+  }
+}
+
+/* =========================================================
+   CONEXÃO — COPIADA DO GAMEPAD FUNCIONAL
+   ========================================================= */
+document.getElementById('connect').onclick=async()=>{
+  if(!navigator.bluetooth){
+    setStatus('❌ Web Bluetooth indisponível');
+    return;
+  }
+
+  try{
+    setStatus('🔵 Escolha o micro:bit...');
+
+    device=await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'BBC micro:bit'}],
+      optionalServices:[
+        '00001800-0000-1000-8000-00805f9b34fb',
+        '00001801-0000-1000-8000-00805f9b34fb',
+        '0000180a-0000-1000-8000-00805f9b34fb',
+        SERVICE
+      ]
+    });
+
+    device.addEventListener(
+      'gattserverdisconnected',
+      ()=>{
+        rxChar=null;
+        setStatus('⚪ Desconectado');
+      }
+    );
+
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(SERVICE);
+
+    /*
+      002 = TX do micro:bit.
+      Apenas iniciamos as notificações, como no Gamepad.
+    */
+    const txChar=await service.getCharacteristic(TX);
+    await txChar.startNotifications();
+
+    /*
+      003 = RX do micro:bit.
+      ESTE é o canal usado para o navegador enviar texto.
+    */
+    rxChar=await service.getCharacteristic(RX);
+
+    setStatus('🟢 Micro:bit conectado e pronto para receber');
+
+  }catch(e){
+    rxChar=null;
+    setStatus('❌ Conexão cancelada: '+e.message);
+    console.error(e);
+  }
+};
+
+document.getElementById('disconnect').onclick=()=>{
+  try{
+    if(device && device.gatt && device.gatt.connected)
+      device.gatt.disconnect();
+  }catch(e){}
+
+  rxChar=null;
+  setStatus('⚪ Desconectado');
+};
+
+/* =========================================================
+   TECLAS
+   ========================================================= */
+const pressed=new Set();
+
+function commandFor(e){
+  const special={
+    ' ':'SPACE',
+    'Enter':'ENTER',
+    'Tab':'TAB',
+    'Backspace':'BACKSPACE',
+    'Escape':'ESC',
+    'ArrowUp':'UP',
+    'ArrowDown':'DOWN',
+    'ArrowLeft':'LEFT',
+    'ArrowRight':'RIGHT',
+    'Shift':'SHIFT',
+    'Control':'CTRL',
+    'Alt':'ALT',
+    'Meta':'WIN',
+    'CapsLock':'CAPS',
+    'Delete':'DELETE',
+    'Insert':'INSERT',
+    'Home':'HOME',
+    'End':'END',
+    'PageUp':'PAGEUP',
+    'PageDown':'PAGEDOWN'
+  };
+
+  if(special[e.key]!==undefined)
+    return special[e.key];
+
+  if(/^F\d+$/.test(e.key))
+    return e.key.toUpperCase();
+
+  /* A, B, C... */
+  if(e.key && e.key.length===1)
+    return e.key.toUpperCase();
+
+  return e.code.toUpperCase();
+}
+
+function setVisual(code,active){
+  document.querySelectorAll(".k").forEach(el=>{
+    if(el.dataset.code===code)
+      el.classList.toggle("active",active);
+  });
+}
+
+/* TECLADO FÍSICO */
+window.addEventListener('keydown',e=>{
+  if(pressed.has(e.code))return;
+
+  pressed.add(e.code);
+
+  const msg=commandFor(e);
+
+  document.getElementById("lastKey").textContent=
+    e.key===" " ? "Espaço" : e.key;
+
+  setVisual(e.code,true);
+
+  /*
+    A tecla vira texto e vai diretamente para send().
+    Exemplo:
+    A -> "A"
+    B -> "B"
+    1 -> "1"
+    ArrowUp -> "UP"
+  */
+  send(msg);
+
+  if([
+    'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '
+  ].includes(e.key)){
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('keyup',e=>{
+  pressed.delete(e.code);
+  setVisual(e.code,false);
+
+  if([
+    'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '
+  ].includes(e.key)){
+    e.preventDefault();
+  }
+});
+
+/* TECLADO VISUAL DA PÁGINA */
+function renderKeyboard(){
+  document.getElementById("keyboard").innerHTML=layout.map(row=>
+    '<div class="krow">'+
+    row.map(([code,label])=>{
+      let cls="k";
+
+      if([
+        "Backspace","Tab","CapsLock","Enter",
+        "ShiftLeft","ShiftRight",
+        "ControlLeft","ControlRight",
+        "AltLeft","AltRight"
+      ].includes(code))
+        cls+=" wide";
+
+      if(code==="Space")
+        cls+=" space";
+
+      return `<button type="button"
+        class="${cls}"
+        data-code="${code}">${label}</button>`;
+    }).join("")+
+    '</div>'
+  ).join("");
+
+  document.querySelectorAll(".k").forEach(button=>{
+    button.addEventListener("mousedown",e=>{
+      e.preventDefault();
+
+      const code=button.dataset.code;
+
+      const map={
+        Space:' ',
+        Enter:'Enter',
+        Tab:'Tab',
+        Backspace:'Backspace',
+        Escape:'Escape',
+        ArrowUp:'ArrowUp',
+        ArrowDown:'ArrowDown',
+        ArrowLeft:'ArrowLeft',
+        ArrowRight:'ArrowRight',
+        ShiftLeft:'Shift',
+        ShiftRight:'Shift',
+        ControlLeft:'Control',
+        ControlRight:'Control',
+        AltLeft:'Alt',
+        AltRight:'Alt',
+        CapsLock:'CapsLock'
+      };
+
+      const fake={
+        code:code,
+        key:map[code]!==undefined ? map[code] : button.textContent
+      };
+
+      setVisual(code,true);
+
+      document.getElementById("lastKey").textContent=
+        fake.key===" " ? "Espaço" : fake.key;
+
+      send(commandFor(fake));
+    });
+
+    button.addEventListener("mouseup",()=>{
+      setVisual(button.dataset.code,false);
+    });
+
+    button.addEventListener("mouseleave",()=>{
+      setVisual(button.dataset.code,false);
+    });
+  });
+}
+
+/* SIMULAÇÃO */
+document.getElementById("simulation").checked=false;
+document.getElementById("simulation").addEventListener("change",e=>{
+  simulation=e.target.checked;
+  setStatus(
+    simulation
+      ? "🧪 Simulação ativa"
+      : "⚪ Simulação desativada"
+  );
+});
+
+renderKeyboard();
+</script>
+</body>
+</html>
