@@ -10,7 +10,7 @@
 .card{background:#182235;border:1px solid #2d3950;border-radius:18px;padding:18px;margin-bottom:18px}
 h1{margin:0 0 5px}h2{margin-top:0}.sub,.help{color:#aab4cc;line-height:1.5}
 .camera{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:4/3}
-video{width:100%;height:100%;object-fit:cover}
+video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 #prediction{font-size:28px;font-weight:bold;margin:10px 0}.confidence{font-size:18px}
 input,select{width:100%;padding:12px;border-radius:9px;border:1px solid #3b4963;background:#0e1624;color:white;margin:6px 0 12px}
 button{border:0;border-radius:10px;padding:12px 15px;margin:4px;font-weight:bold;cursor:pointer}
@@ -51,7 +51,7 @@ td input{margin:0;padding:8px}.log{height:130px;overflow:auto;background:#0a111d
 
 <div class="card">
 <h2>3. Mapeamento dos comandos</h2>
-<p class="help">O site cria automaticamente uma linha para cada classe do seu modelo. Exemplo: “ESQUERDA” → <code>LEFT;</code>.</p>
+<p class="help">Se o modelo detetar "esquerda" quando se move para a direita, troque aqui o comando enviado de cada classe e clique em salvar.</p>
 <div id="mapping">Carregue um modelo para aparecerem as classes.</div>
 <button class="blue" id="saveMap">💾 Salvar configuração</button>
 </div>
@@ -76,9 +76,9 @@ td input{margin:0;padding:8px}.log{height:130px;overflow:auto;background:#0a111d
 <p class="note">
 <b>Teachable Machine</b> reconhece a pose → este site verifica a confiança → procura o comando configurado → envia pelo Bluetooth UART → o <b>micro:bit</b> executa.
 </p>
-<p class="note">O limite padrão é 80% de confiança para evitar acionamentos acidentais.</p>
+<p class="note">Ajuste a confiança para 75% ou 80% para evitar leituras falsas.</p>
 <label>Confiança mínima (%)</label>
-<input id="threshold" type="number" min="1" max="100" value="80">
+<input id="threshold" type="number" min="1" max="100" value="75">
 </div>
 </div>
 </div>
@@ -232,10 +232,14 @@ async function predict(){
     }
 
     const ctx=aiCanvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, 640, 480);
+    
+    // Desenha a imagem espelhada no canvas para bater com o treino da webcam
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -640, 0, 640, 480);
+    ctx.restore();
 
-    // Passa o canvas sem espelhamento para o modelo de pose
-    const result=await model.estimatePose(aiCanvas, false);
+    const result=await model.estimatePose(aiCanvas);
     const prediction=await model.predict(result.posenetOutput);
 
     prediction.sort((a,b)=>b.probability-a.probability);
