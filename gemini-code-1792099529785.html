@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ROBOFACE • COMANDO DE VOZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #020305;
+  --card-bg: #0d121c;
+  --card-border: #1a2333;
+  --text-main: #f8fafc;
+  --text-muted: #64748b;
+  --primary: #8b5cf6;
+  --secondary: #2563eb;
+  --danger: #ef4444;
+  --success: #10b981;
+}
+
+body.high-contrast {
+  --bg: #000000;
+  --card-bg: #000000;
+  --card-border: #ffffff;
+  --text-main: #ffffff;
+  --text-muted: #fef08a;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: radial-gradient(circle at 50% 30%, #111522 0%, #030407 80%, var(--bg) 100%), var(--bg);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.wrap {
+  width: 100vw;
+  max-width: 840px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-top {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-top:active { transform: scale(0.95); }
+
+/* CARCAÇA DO MICROFONE */
+.voice-card {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1.5px solid var(--card-border);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+}
+
+.btn-bluetooth {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid #60a5fa;
+  color: #fff;
+  padding: 8px 24px;
+  border-radius: 18px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mic-button {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a2333 0%, #0d121c 100%);
+  border: 3px solid var(--card-border);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mic-button.listening {
+  border-color: var(--primary);
+  background: radial-gradient(circle, #2e1065 0%, #0d121c 100%);
+  animation: pulseMic 1.5s infinite;
+}
+
+@keyframes pulseMic {
+  0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.6); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 18px rgba(139, 92, 246, 0); }
+  100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+.mic-status-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+
+.display-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #38bdf8;
+}
+
+.transcript-box {
+  width: 100%;
+  min-height: 52px;
+  background: #04070d;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #34d399;
+}
+
+/* SEÇÃO MEUS COMANDOS REFORMULADA */
+.commands-card {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1.5px solid var(--card-border);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-header-styled {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+}
+
+.header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #fff;
+  margin: 0;
+}
+
+.card-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 2px 0 0 0;
+}
+
+.cmd-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.cmd-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--card-border);
+  letter-spacing: 0.05em;
+}
+
+.cmd-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.cmd-falar {
+  font-weight: 700;
+  color: #fff;
+}
+
+.cmd-mensagem {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.btn-action {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-edit {
+  background: rgba(37, 99, 235, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.btn-edit:hover { background: rgba(37, 99, 235, 0.35); }
+
+.btn-delete {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(252, 165, 165, 0.3);
+}
+
+.btn-delete:hover { background: rgba(239, 68, 68, 0.35); }
+
+.btn-add-cmd {
+  background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-add-cmd:active { transform: scale(0.96); }
+
+/* CAMPOS DE ADIÇÃO DE NOVO COMANDO */
+.add-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.add-form-row input {
+  background: #04070d;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.88rem;
+  outline: none;
+  touch-action: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.add-form-row input:focus { border-color: var(--primary); }
+
+@media (max-width: 600px) {
+  .add-form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand-title">
+      <button class="btn-top" id="btnBack">← Voltar</button>
+      ROBOFACE • VOZ
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a class="btn-top" href="https://makecode.microbit.org/S50260-20928-93759-39384" target="_blank">🧩 MakeCode ↗</a>
+      <button class="btn-top" id="toggleContrast">👁 Contraste</button>
+    </div>
+  </header>
+
+  <!-- CARTÃO CENTRAL DO MICROFONE -->
+  <div class="voice-card">
+    <button class="btn-bluetooth" id="btnConnect">🔵 Conectar Bluetooth</button>
+
+    <div class="mic-button" id="btnMic">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+      <span class="mic-status-label" id="micLabel">TOQUE P/ FALAR</span>
+    </div>
+
+    <div class="display-area">
+      <span class="status-badge" id="statusBadge">Pronto</span>
+      <div class="transcript-box" id="transcriptBox">Aguardando fala...</div>
+    </div>
+  </div>
+
+  <!-- SEÇÃO MEUS COMANDOS COM TÍTULO REFORMULADO -->
+  <div class="commands-card">
+    <div class="card-header-styled">
+      <div class="header-title-box">
+        <div class="icon-badge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            <line x1="9" y1="7" x2="15" y2="7"/>
+            <line x1="9" y1="11" x2="13" y2="11"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title">Meus Comandos</h2>
+          <p class="card-sub">Cadastre as palavras de voz e as mensagens enviadas ao robô.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORMULÁRIO DE ADIÇÃO -->
+    <div class="add-form-row">
+      <input type="text" id="inputFalar" placeholder="Palavra a falar (ex: luz)" autocomplete="off">
+      <input type="text" id="inputMensagem" placeholder="Mensagem enviada (ex: LED_ON;)" autocomplete="off">
+      <button class="btn-add-cmd" onclick="adicionarComando()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adicionar
+      </button>
+    </div>
+
+    <!-- TABELA DE COMANDOS -->
+    <table class="cmd-table">
+      <thead>
+        <tr>
+          <th>FALAR</th>
+          <th>MENSAGEM</th>
+          <th>AÇÕES</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Linhas geradas via JS -->
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const UART_RX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+let rxCharacteristic = null;
+const $ = id => document.getElementById(id);
+
+// COMANDOS PADRÃO INICIAIS
+const defaultCommands = [
+  { falar: "frente", mensagem: "UP;" },
+  { falar: "voltar", mensagem: "DOWN;" },
+  { falar: "esquerda", mensagem: "LEFT;" },
+  { falar: "direita", mensagem: "RIGHT;" },
+  { falar: "parar", mensagem: "STOP;" }
+];
+
+// Carrega comandos salvos no navegador
+let meusComandos = JSON.parse(localStorage.getItem("roboface_comandos")) || defaultCommands;
+
+function salvarComandos() {
+  localStorage.setItem("roboface_comandos", JSON.stringify(meusComandos));
+  renderTabela();
+}
+
+function cleanText(str) {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+    .trim();
+}
+
+function renderTabela() {
+  const tbody = $("tableBody");
+  tbody.innerHTML = "";
+
+  meusComandos.forEach((cmd, index) => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td class="cmd-falar">${cmd.falar}</td>
+      <td class="cmd-mensagem">${cmd.mensagem}</td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn-action btn-edit" onclick="editarComando(${index})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+          <button class="btn-action btn-delete" onclick="apagarComando(${index})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Apagar
+          </button>
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function adicionarComando() {
+  const falar = cleanText($("inputFalar").value);
+  const mensagem = $("inputMensagem").value.trim();
+
+  if (!falar || !mensagem) {
+    alert("Preencha a palavra a FALAR e a MENSAGEM enviada.");
+    return;
+  }
+
+  meusComandos.push({ falar, mensagem });
+  salvarComandos();
+
+  $("inputFalar").value = "";
+  $("inputMensagem").value = "";
+}
+
+function editarComando(index) {
+  const cmd = meusComandos[index];
+  const novoFalar = prompt("Editar palavra a FALAR:", cmd.falar);
+  if (novoFalar === null) return;
+
+  const novaMensagem = prompt("Editar MENSAGEM enviada:", cmd.mensagem);
+  if (novaMensagem === null) return;
+
+  meusComandos[index] = {
+    falar: cleanText(novoFalar),
+    mensagem: novaMensagem.trim()
+  };
+
+  salvarComandos();
+}
+
+function apagarComando(index) {
+  if (confirm(`Deseja apagar o comando "${meusComandos[index].falar}"?`)) {
+    meusComandos.splice(index, 1);
+    salvarComandos();
+  }
+}
+
+// TRANSMISSÃO VIA BLUETOOTH
+async function sendData(text) {
+  if (!text) return;
+  $("statusBadge").textContent = "Enviado: " + text;
+
+  if (!rxCharacteristic) {
+    console.warn("Bluetooth não conectado. Dado:", text);
+    return;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text + "\n");
+    if (rxCharacteristic.writeValueWithoutResponse) {
+      await rxCharacteristic.writeValueWithoutResponse(data);
+    } else {
+      await rxCharacteristic.writeValue(data);
+    }
+  } catch (e) {
+    console.error("Erro no envio:", e);
+    $("statusBadge").textContent = "Erro no envio";
+  }
+}
+
+// RECONHECIMENTO DE VOZ COM DECODIFICADOR DE TABELA
+const btnMic = $("btnMic");
+const micLabel = $("micLabel");
+const transcriptBox = $("transcriptBox");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    btnMic.classList.add("listening");
+    micLabel.textContent = "OUVINDO...";
+    $("statusBadge").textContent = "Ouvindo voz...";
+  };
+
+  recognition.onend = () => {
+    if (isListening) {
+      recognition.start();
+    } else {
+      btnMic.classList.remove("listening");
+      micLabel.textContent = "TOQUE P/ FALAR";
+      $("statusBadge").textContent = "Pronto";
+    }
+  };
+
+  recognition.onresult = (e) => {
+    const lastResultIndex = e.results.length - 1;
+    const rawSpeech = e.results[lastResultIndex][0].transcript;
+    const spokenClean = cleanText(rawSpeech);
+
+    transcriptBox.textContent = `"${spokenClean}"`;
+
+    // Verifica se existe o comando cadastrado
+    const match = meusComandos.find(c => c.falar === spokenClean);
+
+    if (match) {
+      sendData(match.mensagem);
+    } else {
+      sendData(spokenClean);
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Erro no mic:", e.error);
+    if (e.error === 'not-allowed') {
+      isListening = false;
+      btnMic.classList.remove("listening");
+      micLabel.textContent = "SEM PERMISSÃO";
+    }
+  };
+} else {
+  micLabel.textContent = "INDISPONÍVEL";
+  transcriptBox.textContent = "Sem suporte a voz";
+}
+
+btnMic.onclick = () => {
+  if (!recognition) {
+    alert("Seu navegador não suporta voz. Use o Google Chrome ou Edge.");
+    return;
+  }
+
+  isListening = !isListening;
+
+  if (isListening) {
+    recognition.start();
+  } else {
+    recognition.stop();
+  }
+};
+
+// WEBBLEUTOOTH
+async function connectBluetooth() {
+  if (!navigator.bluetooth) {
+    alert("Navegador sem suporte a Web Bluetooth. Use o Google Chrome ou Edge.");
+    return;
+  }
+
+  try {
+    $("statusBadge").textContent = "Conectando...";
+    $("btnConnect").textContent = "🔵 Conectando...";
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "BBC micro:bit" }],
+      optionalServices: [UART_SERVICE]
+    });
+
+    device.addEventListener("gattserverdisconnected", () => {
+      rxCharacteristic = null;
+      $("btnConnect").textContent = "🔵 Conectar Bluetooth";
+      $("statusBadge").textContent = "Desconectado";
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(UART_SERVICE);
+    rxCharacteristic = await service.getCharacteristic(UART_RX);
+
+    $("btnConnect").textContent = "● Conectado!";
+    $("statusBadge").textContent = "Conectado ✔";
+  } catch (e) {
+    rxCharacteristic = null;
+    $("btnConnect").textContent = "🔵 Conectar Bluetooth";
+    $("statusBadge").textContent = "Erro de Conexão";
+  }
+}
+
+$("btnConnect").onclick = connectBluetooth;
+$("btnBack").onclick = () => {
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = "index.html";
+};
+$("toggleContrast").onclick = () => document.body.classList.toggle("high-contrast");
+
+renderTabela();
+</script>
+</body>
+</html>
